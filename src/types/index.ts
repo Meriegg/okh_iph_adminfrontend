@@ -101,9 +101,6 @@ export type TUserLink = {
   country: string;
   language: string;
 
-  quality: string | null;
-  bitrate: string | null;
-  MISR: string | null;
   adsNumber: number | null;
 
   created_at: Date;

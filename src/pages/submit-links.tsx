@@ -6,11 +6,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { countries, getCountryData, type TCountryCode } from "countries-list";
 import { api } from "@/lib/axios";
 import type { TMatch, TUser, TUserLink } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import languages from "language-list";
 import { EditIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -24,9 +22,11 @@ import {
 } from "@/components/ui/select";
 import { SearchSelect } from "@/components/ui/search-select";
 import { PriorityGroups } from "@/constants";
-import { Checkbox } from "@/components/ui/checkbox";
 import { capitalizeFirstLetter } from "@/utils/capitalize-first-letter";
-import { isTimestampToday } from "@/utils/is-timestamp-today";
+import {
+  StreamerLinkForm,
+  type UserLinkSubmitData,
+} from "@/components/forms/streamer-link-form";
 
 export const Page_SubmitLinks = () => {
   const currUser = useQuery<TUser>({
@@ -99,21 +99,19 @@ export const Page_SubmitLinks = () => {
     return leaguesByCountry;
   }, [matches]);
 
-  const [name, setName] = useState("");
-  const [link, setLink] = useState("");
-  const [type, setType] = useState<"embed" | "popup" | "normal">("normal");
-  const [country, setCountry] = useState("United States");
-  const [language, setLanguage] = useState("en");
-  const [adsNumber, setAdsNumber] = useState(1);
-  const [matchId, setMatchId] = useState<string | null>(null);
-
-  const [sport, setSport] = useState<string>("");
-
   const [editId, setEditId] = useState<string | null>(null);
   const [isFormopen, setIsFormOpen] = useState(false);
 
   const addLink = useMutation({
-    mutationFn: async ({ inpMatchId }: { inpMatchId: string }) => {
+    mutationFn: async ({
+      inpMatchId,
+      name,
+      link,
+      type,
+      country,
+      language,
+      adsNumber,
+    }: UserLinkSubmitData & { inpMatchId: string }) => {
       return await api.post("/submit-links/submit-link", {
         name,
         link,
@@ -133,13 +131,6 @@ export const Page_SubmitLinks = () => {
       queryClient.invalidateQueries({
         queryKey: ["userLinks.user"],
       });
-      setName("");
-      setLink("");
-      setType("normal");
-      setCountry("United States");
-      setLanguage("en");
-      setAdsNumber(1);
-      setMatchId(null);
     },
   });
 
@@ -147,7 +138,13 @@ export const Page_SubmitLinks = () => {
     mutationFn: async ({
       id,
       inpMatchId,
-    }: {
+      name,
+      link,
+      type,
+      country,
+      language,
+      adsNumber,
+    }: UserLinkSubmitData & {
       id: string;
       inpMatchId: string;
     }) => {
@@ -171,15 +168,8 @@ export const Page_SubmitLinks = () => {
       queryClient.invalidateQueries({
         queryKey: ["userLinks.user"],
       });
-      setName("");
-      setLink("");
-      setType("normal");
-      setCountry("United States");
-      setLanguage("en");
-      setAdsNumber(1);
-      setMatchId(null);
       setEditId(null);
-      setExcludeSubmittedMatches(true);
+      // setExcludeSubmittedMatches(true);
     },
   });
 
@@ -217,44 +207,55 @@ export const Page_SubmitLinks = () => {
     },
   });
 
-  const [excludeSubmittedMatches, setExcludeSubmittedMatches] = useState(true);
+  const currLinks = useMemo(
+    () =>
+      userLinks.data?.links
+        ?.filter((link) => {
+          const dbMatch = dbMatches.data?.find((m) => m.id === link.match_id);
 
-  const currLinks = userLinks.data?.links
-    ?.filter((link) => {
-      const dbMatch = dbMatches.data?.find((m) => m.id === link.match_id);
+          return !!dbMatch;
+        })
+        ?.filter((link) => {
+          const dbMatch = dbMatches.data?.find((m) => m.id === link.match_id);
 
-      return !!dbMatch;
-    })
-    ?.filter((link) => {
-      const dbMatch = dbMatches.data?.find((m) => m.id === link.match_id);
+          if (sportQuery) return dbMatch?.sport === sportQuery;
 
-      if (sportQuery) return dbMatch?.sport === sportQuery;
+          return true;
+        })
+        ?.filter((link) => {
+          const dbMatch = dbMatches.data?.find((m) => m.id === link.match_id);
 
-      return true;
-    })
-    ?.filter((link) => {
-      const dbMatch = dbMatches.data?.find((m) => m.id === link.match_id);
+          if (leagueQuery && leagueQuery !== "all_leagues")
+            return dbMatch?.league === leagueQuery.split("::").at(0);
 
-      if (leagueQuery && leagueQuery !== "all_leagues")
-        return dbMatch?.league === leagueQuery.split("::").at(0);
+          return true;
+        })
+        ?.filter((link) => {
+          if (matchIdQuery) return link.match_id === matchIdQuery;
 
-      return true;
-    })
-    ?.filter((link) => {
-      if (matchIdQuery) return link.match_id === matchIdQuery;
+          return true;
+        })
+        ?.filter((link) => {
+          if (linkQuery) return link.link.includes(linkQuery);
 
-      return true;
-    })
-    ?.filter((link) => {
-      if (linkQuery) return link.link.includes(linkQuery);
+          return true;
+        })
+        ?.filter((link) => {
+          if (typeQuery && typeQuery !== "-all-")
+            return link.type === typeQuery;
 
-      return true;
-    })
-    ?.filter((link) => {
-      if (typeQuery && typeQuery !== "-all-") return link.type === typeQuery;
-
-      return true;
-    });
+          return true;
+        }),
+    [
+      userLinks.data?.links,
+      dbMatches.data,
+      sportQuery,
+      leagueQuery,
+      matchIdQuery,
+      linkQuery,
+      typeQuery,
+    ]
+  );
 
   return (
     <div className="w-full flex flex-col gap-6 h-full">
@@ -278,7 +279,7 @@ export const Page_SubmitLinks = () => {
 
       {isFormopen && (
         <div className="fixed z-50 top-0 left-0 w-full h-full bg-black/60 flex items-center justify-center">
-          <div className="w-full max-w-[800px] rounded-2xl flex flex-col gap-6 border bg-slate-900 p-6">
+          <div className="w-full max-w-200 rounded-2xl flex flex-col gap-6 border bg-slate-900 p-6">
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-1">
                 <p className="text-2xl font-semibold">Submit Stream</p>
@@ -297,295 +298,70 @@ export const Page_SubmitLinks = () => {
               </div>
             </div>
 
-            <div className="p-0.75 flex flex-col gap-1 bg-(--lifted) rounded-2xl">
-              <div className="flex items-center gap-2">
-                <div className="">
-                  <p className="text-xs pl-2 py-1 text-slate-300">Sport</p>
-
-                  <Select value={sport} onValueChange={(val) => setSport(val)}>
-                    <SelectTrigger className="border-none py-3! h-11! bg-slate-900! rounded-2xl! w-full">
-                      <SelectValue placeholder="Select a sport" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from(
-                        new Set(dbMatches.data?.map((match) => match.sport))
-                      ).map((sport, idx) => (
-                        <SelectItem value={sport} key={idx}>
-                          {sport}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="w-full">
-                  <p className="text-xs pl-2 py-1 text-slate-300">Match</p>
-
-                  <SearchSelect
-                    className="w-full"
-                    value={matchId ?? ""}
-                    onValueChange={(val) => setMatchId(val)}
-                    placeholder="Select a match"
-                    items={
-                      dbMatches.data
-                        ?.filter((match) => match.sport === sport)
-                        ?.filter((match) =>
-                          excludeSubmittedMatches
-                            ? userLinks.data?.links?.findIndex(
-                                (link) => link.match_id === match.id
-                              ) === -1
-                            : true
-                        )
-                        ?.sort((a, b) => a.timestamp - b.timestamp)
-                        ?.map((match) => ({
-                          text: `${match.league}: ${match.team1} ${
-                            match.team2 ? `vs ${match.team2}` : ""
-                          } @ ${
-                            isTimestampToday(match.timestamp)
-                              ? "Today"
-                              : new Intl.DateTimeFormat("ro-RO", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "2-digit",
-                                }).format(new Date(match.timestamp))
-                          }`,
-                          ui: (
-                            <span className="flex flex-col gap-1">
-                              <span className="font-medium text-xs text-slate-300">
-                                {match.league}
-                              </span>
-                              <span className="font-semibold">
-                                {match.team1}{" "}
-                                {match.team2 ? (
-                                  <span>
-                                    <span className="text-xs text-slate-300 font-normal">
-                                      vs
-                                    </span>{" "}
-                                    {match.team2}
-                                  </span>
-                                ) : (
-                                  ""
-                                )}
-                              </span>
-                              <hr className="border-dashed" />
-                              <span className="text-xs font-bold">
-                                {isTimestampToday(match.timestamp)
-                                  ? "Today"
-                                  : new Intl.DateTimeFormat("ro-RO", {
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                      year: "2-digit",
-                                    }).format(new Date(match.timestamp))}
-                              </span>
-                            </span>
-                          ),
-                          value: match.id,
-                          groupName: match.league,
-                        })) ?? []
+            <StreamerLinkForm
+              dbMatches={dbMatches.data ?? []}
+              userLinks={userLinks.data?.links ?? []}
+              currUser={currUser.data!}
+              defaultValues={
+                !editId
+                  ? undefined
+                  : {
+                      ...userLinks.data?.links?.find((l) => l.id === editId),
+                      excludeSubmittedMatches: false,
+                      sport: dbMatches.data?.find(
+                        (m) =>
+                          m.id ===
+                          userLinks.data?.links?.find((l) => l.id === editId)
+                            ?.match_id
+                      )?.sport,
                     }
-                  />
-                </div>
-              </div>
-
-              <div className="w-full flex items-center gap-0.5 px-2 py-2 bg-slate-900 rounded-2xl">
-                <Checkbox
-                  checked={excludeSubmittedMatches}
-                  onCheckedChange={(val) => setExcludeSubmittedMatches(!!val)}
-                />
-
-                <p className="text-xs pl-2 py-1 text-slate-300">
-                  Exclude submitted matches
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-full">
-                  <p className="text-xs pl-2 py-1 text-slate-300">
-                    Channel Name
-                  </p>
-
-                  <input
-                    className="px-4 py-3 rounded-2xl bg-slate-900 w-full text-sm"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="eg. SkySportsArena"
-                  />
-                </div>
-
-                <div className="w-full">
-                  <p className="text-xs pl-2 py-1 text-slate-300">Link</p>
-
-                  <input
-                    className="px-4 py-3 rounded-2xl bg-slate-900 w-full text-sm"
-                    value={link}
-                    onChange={(e) => setLink(e.target.value)}
-                    placeholder="eg. https://example.com"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-full">
-                  <p className="text-xs pl-2 py-1 text-slate-300">Country</p>
-
-                  <Select
-                    value={country}
-                    onValueChange={(val) => setCountry(val)}
-                  >
-                    <SelectTrigger className="border-none py-3! h-11! bg-slate-900! rounded-2xl! w-full">
-                      <SelectValue placeholder="Select a country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(countries).map((countryCode) => {
-                        const country = getCountryData(
-                          countryCode as TCountryCode
-                        ).name;
-                        return (
-                          <SelectItem value={country} key={country}>
-                            {country}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="w-full">
-                  <p className="text-xs pl-2 py-1 text-slate-300">Language</p>
-
-                  <Select
-                    value={language}
-                    onValueChange={(val) => setLanguage(val)}
-                  >
-                    <SelectTrigger className="border-none py-3! h-11! bg-slate-900! rounded-2xl! w-full">
-                      <SelectValue placeholder="Select a language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languages()
-                        .getLanguageCodes()
-                        .map((langCode: string, idx: number) => (
-                          <SelectItem value={langCode} key={idx}>
-                            {languages().getLanguageName(langCode)}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-full">
-                  <p className="text-xs pl-2 py-1 text-slate-300">Type</p>
-
-                  <Select
-                    value={type}
-                    onValueChange={(val) => {
-                      setType(val as "embed" | "popup" | "normal");
-                    }}
-                  >
-                    <SelectTrigger className="border-none py-3! h-11! bg-slate-900! rounded-2xl! w-full">
-                      <SelectValue placeholder="Select a type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {!!currUser.data?.permission_linkSubmission && (
-                        <SelectItem value="normal">Normal link</SelectItem>
-                      )}
-                      {!!currUser.data?.permission_popupSubmission && (
-                        <SelectItem value="popup">Popup link</SelectItem>
-                      )}
-                      {!!currUser.data?.permission_embedSubmission && (
-                        <SelectItem value="embed">Embed source</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="w-full">
-                  <p className="text-xs pl-2 py-1 text-slate-300">No. of ads</p>
-
-                  <input
-                    className="px-4 py-3 rounded-2xl bg-slate-900 w-full text-sm"
-                    value={adsNumber}
-                    onChange={(e) => setAdsNumber(e.target.valueAsNumber)}
-                    type="number"
-                    placeholder="2"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2">
-              <button
-                onClick={() => {
-                  setIsFormOpen(false);
-                  if (editId) {
-                    setName("");
-                    setLink("");
-                    setType("normal");
-                    setCountry("United States");
-                    setLanguage("en");
-                    setAdsNumber(1);
-                    setEditId(null);
-                    setMatchId(null);
-                    setSport("");
-                    setExcludeSubmittedMatches(true);
-                  }
-                }}
-                className="rounded-full! bg-(--lifted) flex items-center gap-1.5 px-4 py-2.5 text-sm"
-              >
-                <XIcon className="w-4 h-4" /> Cancel
-              </button>
-
-              <button
-                className="rounded-full! bg-(--lifted) flex items-center gap-1.5 px-4 py-2.5 border text-sm"
-                onClick={(e) => {
-                  if (
-                    !name ||
-                    !link ||
-                    !country ||
-                    !language ||
-                    !type ||
-                    !matchId ||
-                    typeof adsNumber !== "number"
-                  ) {
-                    toast.error("Complete all required fields!");
-                    e.preventDefault();
-                    return;
-                  }
-
-                  if (!editId) {
-                    addLink.mutate({
-                      inpMatchId: matchId,
-                    });
-                  } else {
-                    editLink.mutate({
-                      id: editId,
-                      inpMatchId: matchId,
-                    });
-                  }
-                }}
-                disabled={
-                  addLink.isPending ||
-                  !name ||
-                  !link ||
-                  !country ||
-                  !language ||
-                  !type ||
-                  !matchId ||
-                  typeof adsNumber !== "number"
+              }
+              onSubmit={(data) => {
+                if (!editId) {
+                  addLink.mutate({
+                    inpMatchId: data.matchId!,
+                    ...data,
+                  });
+                } else {
+                  editLink.mutate({
+                    id: editId,
+                    inpMatchId: data.matchId!,
+                    ...data,
+                  });
                 }
-              >
-                {editId ? (
-                  <>
-                    <EditIcon className="w-4 h-4" /> Edit
-                  </>
-                ) : (
-                  <>
-                    <PlusIcon className="w-4 h-4" /> Continue
-                  </>
-                )}
-              </button>
-            </div>
+              }}
+              submitUI={(submit) => (
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setIsFormOpen(false);
+                      setEditId(null);
+                      if (editId) {
+                        // setExcludeSubmittedMatches(true);
+                      }
+                    }}
+                    className="rounded-full! bg-(--lifted) flex items-center gap-1.5 px-4 py-2.5 text-sm"
+                  >
+                    <XIcon className="w-4 h-4" /> Cancel
+                  </button>
+
+                  <button
+                    onClick={() => submit()}
+                    className="rounded-full! bg-(--lifted) flex items-center gap-1.5 px-4 py-2.5 border text-sm"
+                  >
+                    {editId ? (
+                      <>
+                        <EditIcon className="w-4 h-4" /> Edit
+                      </>
+                    ) : (
+                      <>
+                        <PlusIcon className="w-4 h-4" /> Continue
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            />
           </div>
         </div>
       )}
@@ -867,15 +643,6 @@ export const Page_SubmitLinks = () => {
                         onClick={() => {
                           setIsFormOpen(true);
                           setEditId(link.id);
-                          setName(link.name);
-                          setLink(link.link);
-                          setLanguage(link.language);
-                          setCountry(link.country);
-                          setType(link.type);
-                          setAdsNumber(link.adsNumber ?? 1);
-                          setSport(dbMatch?.sport ?? "");
-                          setMatchId(link.match_id);
-                          setExcludeSubmittedMatches(false);
                         }}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs bg-white/10"
                       >

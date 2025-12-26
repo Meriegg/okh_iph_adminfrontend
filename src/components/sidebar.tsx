@@ -153,15 +153,16 @@ export const Sidebar = () => {
                 <ContactIcon strokeWidth={1} className="w-4 h-4" /> Manage Users
               </Link>
 
-              <Link
-                to="/manage-schedule"
-                className="p-3 hover:bg-(--lifted) rounded-2xl bg-slate-900 flex items-center justify-start gap-2 font-medium text-sm"
-              >
-                <ListIcon strokeWidth={1} className="w-4 h-4" /> Manage Schedule
-              </Link>
-
               {user.data.role === "admin" && (
                 <>
+                  <Link
+                    to="/manage-schedule"
+                    className="p-3 hover:bg-(--lifted) rounded-2xl bg-slate-900 flex items-center justify-start gap-2 font-medium text-sm"
+                  >
+                    <ListIcon strokeWidth={1} className="w-4 h-4" /> Manage
+                    Schedule
+                  </Link>
+
                   <Link
                     to="/manage-website"
                     className="p-3 hover:bg-(--lifted) rounded-2xl bg-slate-900 flex items-center justify-start gap-2 font-medium text-sm"

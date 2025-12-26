@@ -225,7 +225,7 @@ export const Page_ManageLiveTV = () => {
         <div className="rounded-2xl flex items-center justify-between px-4 h-full w-full bg-slate-900">
           <p className="text-2xl font-bold">
             <span className="text-sm text-slate-300 font-medium">
-              {currUser.data?.role === "user" ? "navigation" : "admin"} /{" "}
+              {currUser.data?.role === "admin" ? "admin" : "navigation"} /{" "}
             </span>
             Manage LiveTV
           </p>
@@ -652,12 +652,12 @@ export const Page_ManageLiveTV = () => {
                     )
                       return;
 
-                    if (currUser.data?.role === "user") {
-                      deleteChannel_user.mutate({
+                    if (currUser.data?.role === "admin") {
+                      deleteChannel_admin.mutate({
                         id: channel.id,
                       });
                     } else {
-                      deleteChannel_admin.mutate({
+                      deleteChannel_user.mutate({
                         id: channel.id,
                       });
                     }

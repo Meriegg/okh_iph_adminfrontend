@@ -23,7 +23,7 @@ export const LiveTvChannelForm = ({
   onSubmit,
 }: Props) => {
   const [channelName, setChannelName] = useState(
-    defaultValues?.channelName ?? ""
+    defaultValues?.channel_name ?? ""
   );
   const [channelNameError, setChannelNameError] = useState<string | null>();
 
@@ -31,7 +31,7 @@ export const LiveTvChannelForm = ({
   const [languageError, setLanguageError] = useState<string | null>();
 
   const [linksJson, setLinksJson] = useState(
-    JSON.parse(defaultValues?.linksJson ?? "[]")
+    JSON.parse(defaultValues?.links_json ?? "[]")
   );
   const [linksJsonError, setLinksJsonError] = useState<string | null>();
 
@@ -129,7 +129,7 @@ export const LiveTvChannelForm = ({
         </p>
       )}
 
-      {linksJson?.map((link, idx) => (
+      {linksJson?.map((_: string, idx: number) => (
         <div key={idx} className="flex items-center gap-1">
           <input
             className="px-4 h-13.75 rounded-2xl bg-white/5 w-full"

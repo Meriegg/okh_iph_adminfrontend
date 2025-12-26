@@ -185,7 +185,9 @@ export const Page_ManageUserLinks = () => {
       <div className="rounded-2xl flex items-center gap-1 p-0.75 bg-(--lifted) w-full min-h-13.75">
         <div className="rounded-2xl flex items-center justify-between px-4 h-13.75 w-full bg-slate-900">
           <p className="text-2xl font-bold">
-            <span className="text-sm text-slate-300 font-medium">admin /</span>{" "}
+            <span className="text-sm text-slate-300 font-medium">
+              {currUser.data?.role === "admin" ? "admin" : "moderation"} /
+            </span>{" "}
             Manage User Links
           </p>
         </div>
