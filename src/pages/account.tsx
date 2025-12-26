@@ -24,14 +24,23 @@ export const Page_Account = () => {
     <div className="w-full h-full">
       <div className="max-w-112.5 flex flex-col gap-2 mx-auto">
         <div className=" flex flex-col gap-0.75 bg-(--lifted) p-0.75 rounded-2xl w-full mx-auto">
-          <div className="p-4 rounded-2xl bg-slate-900">
-            <p className="text-2xl font-extrabold">
-              Hello, {user.data?.username}
-            </p>
-            <p className="text-sm text-slate-300 mt-1">
-              joined on{" "}
-              {new Date(user.data?.created_at || "").toLocaleDateString()}
-            </p>
+          <div className="p-4 flex items-center justify-between rounded-2xl bg-slate-900">
+            <div>
+              <p className="text-2xl font-extrabold">
+                Hello, {user.data?.username}
+              </p>
+              <p className="text-sm text-slate-300 mt-1">
+                joined on{" "}
+                {new Date(user.data?.created_at || "").toLocaleDateString()}
+              </p>
+            </div>
+
+            {!!user.data?.profile_picture && (
+              <img
+                src={`http://localhost:4000/images/${user.data?.profile_picture}`}
+                className="size-12 rounded-full"
+              />
+            )}
           </div>
         </div>
 

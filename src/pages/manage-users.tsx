@@ -237,8 +237,8 @@ export const Page_ManageUsers = () => {
 
   return (
     <div className="w-full flex flex-col gap-4 h-full">
-      <div className="rounded-2xl p-0.75 bg-(--lifted) w-full h-13.75">
-        <div className="rounded-2xl flex items-center justify-between px-4 h-full w-full bg-slate-900">
+      <div className="rounded-2xl p-0.75 bg-(--lifted) w-full min-h-13.75">
+        <div className="rounded-2xl flex items-center justify-between px-4 h-13.75 w-full bg-slate-900">
           <p className="text-2xl font-bold">
             <span className="text-sm text-slate-300 font-medium">
               {currUser.data?.role === "moderator" ? "moderation" : "admin"} /{" "}

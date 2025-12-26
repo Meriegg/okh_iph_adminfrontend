@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,20 +138,50 @@ export const Page_ManageLiveTV = () => {
     },
   });
 
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [editChannelOpen, setEditChannelOpen] = useState(false);
-  const editChannel = useMutation({
-    mutationFn: async ({ id }: { id: string }) => {
+  const adminEditChannel = useMutation({
+    mutationFn: async () => {
+      if (!editId) return;
+
       const formData = new FormData();
-      if (!file) {
-        setFileError("Channel image is required");
-        return;
-      }
 
       formData.append("channelName", channelName);
       formData.append("language", language);
       formData.append("linksJson", JSON.stringify(linksJson));
-      formData.append("image", file);
-      formData.append("id", id);
+      formData.append("image", file ?? "");
+      formData.append("id", editId);
+
+      return await api.post("/manage-livetv/admin/edit-channel", formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["manageLiveTv.all.admin"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["manageLiveTv.all.user"],
+      });
+      toast.success("Channel edited successfully. [admin]");
+      setChannelName("");
+      setLanguage("");
+      setLinksJson([]);
+      setFile(null);
+      setEditId(null);
+    },
+  });
+
+  const editChannel = useMutation({
+    mutationFn: async () => {
+      if (!editId) return;
+
+      const formData = new FormData();
+
+      formData.append("channelName", channelName);
+      formData.append("language", language);
+      formData.append("linksJson", JSON.stringify(linksJson));
+      formData.append("image", file ?? "");
+      formData.append("id", editId);
 
       return await api.post("/manage-livetv/edit-channel", formData);
     },
@@ -165,6 +197,7 @@ export const Page_ManageLiveTV = () => {
       setLanguage("");
       setLinksJson([]);
       setFile(null);
+      setEditId(null);
     },
   });
 
@@ -322,6 +355,7 @@ export const Page_ManageLiveTV = () => {
               <input
                 className="px-4 py-4 rounded-2xl bg-white/5 w-full"
                 type="file"
+                accept="image/*"
                 placeholder="channel image"
                 onChange={(e) => {
                   setFile(e.target.files?.[0] ?? null);
@@ -388,6 +422,7 @@ export const Page_ManageLiveTV = () => {
                     setLanguage("");
                     setLinksJson([]);
                     setFile(null);
+                    setEditId(null);
                   }, 500);
                 }
               }}
@@ -505,11 +540,12 @@ export const Page_ManageLiveTV = () => {
                   <hr />
 
                   <p className="text-sm mt-1 text-slate-300 font-medium">
-                    Channel image (required)
+                    Channel image (optional)
                   </p>
                   <input
                     className="px-4 py-4 rounded-2xl bg-white/5 w-full"
                     type="file"
+                    accept="image/*"
                     placeholder="channel image"
                     onChange={(e) => {
                       setFile(e.target.files?.[0] ?? null);
@@ -547,17 +583,17 @@ export const Page_ManageLiveTV = () => {
                           return;
                         }
 
-                        if (!file) {
-                          setFileError("Channel image is required");
-                          e.preventDefault();
-                          return;
+                        if (currUser.data?.id !== editUserId) {
+                          console.log("admin");
+                          adminEditChannel.mutate();
+                        } else {
+                          console.log("user");
+                          editChannel.mutate();
                         }
-
-                        editChannel.mutate({
-                          id: channel.id,
-                        });
                       }}
-                      disabled={editChannel.isPending}
+                      disabled={
+                        editChannel.isPending || adminEditChannel.isPending
+                      }
                       className="w-full mt-4"
                     >
                       Continue
@@ -575,7 +611,8 @@ export const Page_ManageLiveTV = () => {
                     manageUsersAll.data?.find(
                       (user) => user.id === channel.user_id
                     )?.username
-                  }
+                  }{" "}
+                  {channel.user_id === currUser.data?.id ? "(you)" : ""}
                 </p>
               )}
 
@@ -583,7 +620,7 @@ export const Page_ManageLiveTV = () => {
                 <div className="min-w-13 min-h-13 rounded-2xl px-1 bg-slate-900 flex items-center justify-center">
                   <img
                     className="w-full h-auto"
-                    src={`/images/${channel.channel_image}`}
+                    src={`http://localhost:4000/images/${channel.channel_image}`}
                   />
                 </div>
 
@@ -591,20 +628,20 @@ export const Page_ManageLiveTV = () => {
                   {channel.channel_name}
                 </p>
 
-                {channel.user_id === currUser?.data?.id && (
-                  <button
-                    onClick={() => {
-                      setEditChannelOpen(true);
-                      setChannelName(channel.channel_name);
-                      setLanguage(channel.language);
-                      setLinksJson(JSON.parse(channel.links_json));
-                      setFile(null);
-                    }}
-                    className="min-h-13 min-w-13 rounded-2xl flex items-center justify-center bg-slate-900"
-                  >
-                    <EditIcon className="w-4 h-4" strokeWidth={1} />
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setEditChannelOpen(true);
+                    setChannelName(channel.channel_name);
+                    setLanguage(channel.language);
+                    setLinksJson(JSON.parse(channel.links_json));
+                    setFile(null);
+                    setEditId(channel.id);
+                    setEditUserId(channel.user_id);
+                  }}
+                  className="min-h-13 min-w-13 rounded-2xl flex items-center justify-center bg-slate-900"
+                >
+                  <EditIcon className="w-4 h-4" strokeWidth={1} />
+                </button>
 
                 <button
                   onClick={() => {
@@ -645,17 +682,19 @@ export const Page_ManageLiveTV = () => {
                 </p>
               </div>
 
-              {JSON.parse(channel.links_json).map((link, idx) => (
-                <p
-                  key={idx}
-                  className="font-medium w-full px-4 h-13 text-sm flex items-center gap-2 justify-start bg-slate-900 rounded-2xl"
-                >
-                  <span className="text-xs -mb-0.5 text-slate-300">
-                    #{idx + 1}
-                  </span>
-                  {link}
-                </p>
-              ))}
+              {JSON.parse(channel.links_json).map(
+                (link: string, idx: number) => (
+                  <p
+                    key={idx}
+                    className="font-medium w-full px-4 h-13 text-sm flex items-center gap-2 justify-start bg-slate-900 rounded-2xl"
+                  >
+                    <span className="text-xs -mb-0.5 text-slate-300">
+                      #{idx + 1}
+                    </span>
+                    {link}
+                  </p>
+                )
+              )}
             </div>
           </Fragment>
         ))}

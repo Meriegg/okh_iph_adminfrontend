@@ -196,3 +196,11 @@ pre {
     @apply bg-background text-foreground;
   }
 }
+
+input {
+  color-scheme: dark;
+}
+
+input::placeholder {
+  @apply text-muted-foreground;
+}

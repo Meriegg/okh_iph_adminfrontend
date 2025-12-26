@@ -12,7 +12,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <div className="w-full p-6 h-full flex flex-row items-start justify-start gap-6">
+        <div className="w-full p-6 h-auto flex flex-row items-start justify-start gap-6">
           <Sidebar />
 
           <App />

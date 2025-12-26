@@ -42,7 +42,7 @@ export const Sidebar = () => {
 
   return (
     <div
-      className="h-full max-w-75 sticky top-0 min-w-75 mx-auto bg-(--lifted) rounded-2xl flex flex-col gap-2.5 p-0.75"
+      className="h-[calc(100vh-3rem)] max-w-75 sticky top-6 min-w-75 mx-auto bg-(--lifted) rounded-2xl flex flex-col gap-2.5 p-0.75"
       style={{
         alignSelf: "flex-start",
       }}
